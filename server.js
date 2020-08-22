@@ -4,6 +4,8 @@ const express = require("express");
 const fccTesting = require("./freeCodeCamp/fcctesting.js");
 
 const app = express();
+const session = require('express-session');
+const passport = require('passport');
 
 fccTesting(app); //For FCC testing purposes
 app.set("views", "./views/pug");
