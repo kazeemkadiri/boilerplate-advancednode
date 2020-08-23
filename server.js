@@ -6,6 +6,7 @@ const fccTesting = require("./freeCodeCamp/fcctesting.js");
 const app = express();
 const session = require('express-session');
 const passport = require('passport');
+const LocalStrategy = require("passport-local");
 const ObjectID = require('mongodb').ObjectID;
 const mongo = require('mongodb').MongoClient;
 
@@ -24,6 +25,20 @@ mongo.connect(process.env.DATABASE,(err, db)=>{
 	      });
 	});
 	
+       passport.use(
+	new LocalStrategy(function(username,password,done){
+          db.collection("users")
+            .findOne({username:username},function(err,user){
+              console.log("Username:"+user.username);
+              if(err){return done(err); }
+	      if(!user){return done(null,false); }
+	      if(password !== user.password){ return done(null,false); }
+	      return done(null,user);
+            });
+        })
+       );
+           
+
 	app.listen(process.env.PORT || 3000, () => {
              console.log("Listening on port " + process.env.PORT);
 	});
@@ -50,7 +65,12 @@ app.use(passport.session());
 
 app.route("/").get((req, res) => {
   //Change the response to render the Pug template
-  res.render("index", {title:"Hello", message:"Please Login"});
+  res.render("index",
+    {
+     title:"Hello",
+     message:"Please Login",
+     showLogin: true
+     });
 });
 
 
