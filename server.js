@@ -7,6 +7,28 @@ const app = express();
 const session = require('express-session');
 const passport = require('passport');
 const ObjectID = require('mongodb').ObjectID;
+const mongo = require('mongodb').MongoClient;
+
+mongo.connect(process.env.DATABASE,(err, db)=>{
+    if(err){ console.log(err);}
+    else{ console.log("Successful db connection"); 
+	passport.serializeUser((user, done)=>{
+	  done(null, user._id);
+	});
+	
+	passport.deserializeUser((id, done)=>{
+	  db.collection("users")
+	    .findOne({_id: new ObjectID(id)},
+	      (err,doc)=>{
+		done(null, doc);
+	      });
+	});
+	
+	app.listen(process.env.PORT || 3000, () => {
+             console.log("Listening on port " + process.env.PORT);
+	});
+    }
+});
 
 fccTesting(app); //For FCC testing purposes
 app.set("views", "./views/pug");
@@ -25,22 +47,10 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-passport.serializeUser((user, done)=>{
-  done(null, user._id);
-});
 
-passport.deserializeUser((id, done)=>{
-  db.collection('users')
-    .findOne({_id: new ObjectID(id)},
-    (err,doc)=>{
-      done(null, doc);
-    });
-});
 app.route("/").get((req, res) => {
   //Change the response to render the Pug template
   res.render("index", {title:"Hello", message:"Please Login"});
 });
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log("Listening on port " + process.env.PORT);
-});
+
