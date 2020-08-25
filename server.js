@@ -10,7 +10,7 @@ const LocalStrategy = require("passport-local");
 const ObjectID = require('mongodb').ObjectID;
 const mongo = require('mongodb').MongoClient;
 
-mongo.connect(process.env.DATABASE,(err, db)=>{
+mongo.connect(process.env.DATABASE,(err, client)=>{
     if(err){ console.log(err);}
     else{ console.log("Successful db connection"); 
 	passport.serializeUser((user, done)=>{
@@ -18,7 +18,7 @@ mongo.connect(process.env.DATABASE,(err, db)=>{
 	});
 	
 	passport.deserializeUser((id, done)=>{
-	  db.collection("users")
+	  client.db("users_db").collection("users")
 	    .findOne({_id: new ObjectID(id)},
 	      (err,doc)=>{
 		done(null, doc);
@@ -27,9 +27,10 @@ mongo.connect(process.env.DATABASE,(err, db)=>{
 	
        passport.use(
 	new LocalStrategy(function(username,password,done){
-          db.collection("users")
+          console.log(username, password);
+          client.db("users_db").collection("users")
             .findOne({username:username},function(err,user){
-              console.log("Username:"+user.username);
+//              console.log("Username:"+user.username);
               if(err){return done(err); }
 	      if(!user){return done(null,false); }
 	      if(password !== user.password){ return done(null,false); }
@@ -37,7 +38,40 @@ mongo.connect(process.env.DATABASE,(err, db)=>{
             });
         })
        );
-           
+         
+        app.route("/register").post((req,res,next)=>{
+          console.log("In reg route");
+          client.db("users_db").collection("users")
+		.findOne({username:req.body.username},
+	          (err, user)=>{
+                    if(err){
+		     console.log("error");
+                 	 //next(err); 
+                    }
+ 		    if(user){ res.redirect("/"); }
+		    console.log("inserting user");
+	   	    client.db("users_db")
+			.collection("users")
+			.insertOne({
+                          username:req.body.username,
+                          password:req.body.password
+                        },(err, doc)=>{
+                          console.log(doc);
+                          if(err){
+                            res.redirect("/");
+                          }
+                          else{
+                            next(null, doc);
+                          }
+                        })
+                  })
+		});
+
+
+	     app.use((req,res,next)=>{
+                res.status(404).type("text")
+	   	   .send("Not Found")
+             });
 
 	app.listen(process.env.PORT || 3000, () => {
              console.log("Listening on port " + process.env.PORT);
@@ -67,10 +101,35 @@ app.route("/").get((req, res) => {
   //Change the response to render the Pug template
   res.render("index",
     {
-     title:"Hello",
-     message:"Please Login",
-     showLogin: true
-     });
+      title:"Hello",
+      message:"Please Login",
+      showLogin: true,
+      showRegistration: true
+    });
 });
 
+app.post("/login", 
+  passport.authenticate("local",
+    {failureRedirect:"/"}
+  ),
+function(req,res){
+  res.redirect("/profile");
+});
+
+function ensureAuthenticated(req, res,next){
+  if(req.isAuthenticated()){
+    return next();
+  }
+  res.redirect("/");
+}
+                 
+app.route("/profile")
+  .get(ensureAuthenticated, function(req,res,next){
+    res.render("profile",{username:req.user.username});
+})
+
+app.get("/logout",function(req, res){
+  req.logout();
+  res.redirect("/");
+});
 
