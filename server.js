@@ -9,6 +9,8 @@ const passport = require('passport');
 const LocalStrategy = require("passport-local");
 const ObjectID = require('mongodb').ObjectID;
 const mongo = require('mongodb').MongoClient;
+const bcrypt = require('bcrypt');
+
 
 mongo.connect(process.env.DATABASE,(err, client)=>{
     if(err){ console.log(err);}
@@ -27,7 +29,7 @@ mongo.connect(process.env.DATABASE,(err, client)=>{
 	
        passport.use(
 	new LocalStrategy(function(username,password,done){
-          console.log(username, password);
+         // console.log(username, password);
           client.db("users_db").collection("users")
             .findOne({username:username},function(err,user){
 //              console.log("Username:"+user.username);
@@ -40,7 +42,7 @@ mongo.connect(process.env.DATABASE,(err, client)=>{
        );
          
         app.route("/register").post((req,res,next)=>{
-          console.log("In reg route");
+         // console.log("In reg route");
           client.db("users_db").collection("users")
 		.findOne({username:req.body.username},
 	          (err, user)=>{
@@ -49,18 +51,21 @@ mongo.connect(process.env.DATABASE,(err, client)=>{
                  	 //next(err); 
                     }
  		    if(user){ res.redirect("/"); }
-		    console.log("inserting user");
+
+                    //Hash password
+                    let hash = bcrypt.hashSync(req.body.password);
+
 	   	    client.db("users_db")
 			.collection("users")
 			.insertOne({
                           username:req.body.username,
-                          password:req.body.password
+                          password:hash
                         },(err, doc)=>{
-                          console.log(doc);
                           if(err){
                             res.redirect("/");
                           }
                           else{
+
                             next(null, doc);
                           }
                         })
