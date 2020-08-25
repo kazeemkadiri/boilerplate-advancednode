@@ -6,40 +6,26 @@ const fccTesting = require("./freeCodeCamp/fcctesting.js");
 const app = express();
 const session = require('express-session');
 const passport = require('passport');
-const LocalStrategy = require("passport-local");
 const ObjectID = require('mongodb').ObjectID;
 const mongo = require('mongodb').MongoClient;
 const bcrypt = require('bcrypt');
 const routes = require('./routes');
+const auth = require('./auth');
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
 
 mongo.connect(process.env.DATABASE,(err, client)=>{
     if(err){ console.log(err);}
     else{ console.log("Successful db connection"); 
-	passport.serializeUser((user, done)=>{
-	  done(null, user._id);
-	});
-	
-	passport.deserializeUser((id, done)=>{
-	  client.db("users_db").collection("users")
-	    .findOne({_id: new ObjectID(id)},
-	      (err,doc)=>{
-		done(null, doc);
-	      });
-	});
-	
-       passport.use(
-	new LocalStrategy(function(username,password,done){
-         // console.log(username, password);
-          client.db("users_db").collection("users")
-            .findOne({username:username},function(err,user){
-//              console.log("Username:"+user.username);
-              if(err){return done(err); }
-	      if(!user){return done(null,false); }
-	      if(!bcrypt.compareSync(password,user.password)){ return done(null,false); }
-	      return done(null,user);
-            });
-        })
-       );
+
+	auth(app, client); 	
          
 	routes(app, client);
 
@@ -56,13 +42,5 @@ app.use("/public", express.static(process.cwd() + "/public"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-//console.log(process.env.SESSION_SECRET);
 
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: true,
-  saveUninitialized: true,
-}));
-app.use(passport.initialize());
-app.use(passport.session());
 
