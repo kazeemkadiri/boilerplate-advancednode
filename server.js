@@ -35,7 +35,7 @@ mongo.connect(process.env.DATABASE,(err, client)=>{
 //              console.log("Username:"+user.username);
               if(err){return done(err); }
 	      if(!user){return done(null,false); }
-	      if(password !== user.password){ return done(null,false); }
+	      if(!bcrypt.compareSync(password,user.password)){ return done(null,false); }
 	      return done(null,user);
             });
         })
@@ -53,7 +53,7 @@ mongo.connect(process.env.DATABASE,(err, client)=>{
  		    if(user){ res.redirect("/"); }
 
                     //Hash password
-                    let hash = bcrypt.hashSync(req.body.password);
+                    let hash = bcrypt.hashSync(req.body.password,12);
 
 	   	    client.db("users_db")
 			.collection("users")
